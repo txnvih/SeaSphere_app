@@ -42,10 +42,11 @@ class Header extends StatelessWidget {
 
                     /// Logo image
                     Image.asset(
-                      'assests/seaspherelogo.png',
-                      width: 28,
-                      height: 28,
-                    ),
+                      'assets/seaspherelogo.png.png',
+                      errorBuilder: (context, error, stackTrace) {
+                        return Text('Image failed to load');
+                      },
+                    )
                   ],
                 ),
 

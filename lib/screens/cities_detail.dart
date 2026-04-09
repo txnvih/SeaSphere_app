@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../data/cities.dart';
+import '../data/AllCities.dart';
 
 class CityDetailsScreen extends StatelessWidget {
   final String cityId;

@@ -1,83 +1,107 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../data/cities.dart';
+import '../data/AllCities.dart';
 
-class GlobeWidget extends StatefulWidget {
+class GlobeWidget extends StatelessWidget {
   final String filterType;
+  final List<dynamic> apiData;
+  final bool isLoading;
 
-  const GlobeWidget({super.key, required this.filterType});
+  const GlobeWidget({
+    super.key,
+    required this.filterType,
+    required this.apiData,
+    required this.isLoading,
+  });
 
-  @override
-  State<GlobeWidget> createState() => _GlobeWidgetState();
-}
-
-class _GlobeWidgetState extends State<GlobeWidget> {
-
-  GoogleMapController? mapController;
-
-  final LatLng indiaCenter = const LatLng(20.5937, 78.9629);
-
-
-
-  /// 🎨 Pollution color logic (like your TS)
-  double getMarkerHue(String level) {
-    switch (level) {
-      case "high":
-        return BitmapDescriptor.hueRed;
-      case "moderate":
-        return BitmapDescriptor.hueYellow;
-      case "low":
-        return BitmapDescriptor.hueGreen;
-      default:
-        return BitmapDescriptor.hueAzure;
-    }
+  // 🎨 Risk color (ML based)
+  Color getRiskColor(double risk) {
+    if (risk < 0.3) return Colors.green;
+    if (risk < 0.6) return Colors.yellow;
+    if (risk < 0.8) return Colors.orange;
+    return Colors.red;
   }
 
-  Set<Marker> getMarkers() {
-  return allCities
-      .where((city) {
-        if (widget.filterType == 'all') return true;
-        if (widget.filterType == 'freshwater') {
-          return city.waterType == 'freshwater' || city.waterType == 'both';
-        }
-        if (widget.filterType == 'coastal') {
-          return city.waterType == 'coastal' || city.waterType == 'both';
-        }
-        return true;
-      })
-      .map((city) {
-        return Marker(
-          markerId: MarkerId(city.id),
-          position: LatLng(city.lat, city.lng),
-
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            getMarkerHue(city.pollutionLevel),
-          ),
-
-          infoWindow: InfoWindow(
-            title: city.name,
-            snippet:
-                "${city.state} • ${city.pollutionLevel} pollution • Index ${city.pollutionIndex}",
-
-            onTap: () {
-              Navigator.pushNamed(context, "/city/${city.id}");
-            },
-          ),
-        );
-      })
-      .toSet();
-}
+  // 📍 Convert lat/lng → screen position (IMPROVED mapping)
+  Offset mapToScreen(double lat, double lng, Size size) {
+    double x = (lng + 180) * (size.width / 360);
+    double y = (90 - lat) * (size.height / 180);
+    return Offset(x, y);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GoogleMap(
-      initialCameraPosition: CameraPosition(
-        target: indiaCenter,
-        zoom: 4.5,
-      ),
-      markers: getMarkers(),
-      onMapCreated: (controller) {
-        mapController = controller;
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        Size size = constraints.biggest;
+
+        return Stack(
+          children: [
+            /// 🌍 Background Globe Feel
+            Container(
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  colors: [Color(0xFF0B0F1A), Color(0xFF020617)],
+                  center: Alignment.center,
+                  radius: 1.2,
+                ),
+              ),
+            ),
+
+            /// 📍 MARKERS
+            ...allCities.map((city) {
+              // 🔍 Apply filter
+              if (filterType != 'all' &&
+                  city.waterType != filterType) {
+                return const SizedBox();
+              }
+
+              // 🔗 Match backend data
+              var backendCity = apiData.firstWhere(
+                (c) => c["city"] == city.name,
+                orElse: () => null,
+              );
+
+              double risk =
+                  backendCity != null ? backendCity["risk"] : 0.0;
+
+              // 📍 Position
+              Offset pos = mapToScreen(city.lat, city.lng, size);
+
+              return Positioned(
+                left: pos.dx - 10,
+                top: pos.dy - 20,
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.location_on,
+                      color: getRiskColor(risk),
+                      size: 22,
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        city.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        );
       },
     );
   }

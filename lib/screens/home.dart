@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/header.dart';
 import '../widgets/globe.dart';
+import '../services/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,18 +13,46 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String filterType = 'all';
 
+  List<dynamic> cityRiskData = [];
+  bool isLoading = true;
+
+  // 🔥 FETCH DATA
+  void fetchData() async {
+    try {
+      var data = await ApiService.getAllCities();
+
+      setState(() {
+        cityRiskData = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      print("Error fetching data: $e");
+    }
+  }
+
+  // ✅ VERY IMPORTANT (YOU MISSED THIS)
+  @override
+  void initState() {
+    super.initState();
+    fetchData();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0F1A), // bg-background (approx)
+      backgroundColor: const Color(0xFF0B0F1A),
       body: Stack(
         children: [
-          /// 🌍 GLOBE BACKGROUND (placeholder)
+          /// 🌍 GLOBE BACKGROUND
           Positioned.fill(
-                child: GlobeWidget(filterType: filterType),
-              ),
+            child: GlobeWidget(
+              filterType: filterType,
+              apiData: cityRiskData,
+              isLoading: isLoading,
+            ),
+          ),
 
-          /// 🔝 HEADER (simple)
+          /// 🔝 HEADER TITLE
           Positioned(
             top: 0,
             left: 0,
@@ -43,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          /// 🧠 TITLE + DESCRIPTION (LEFT TOP)
+          /// 🧠 TITLE + DESCRIPTION
           Positioned(
             top: 120,
             left: 20,
@@ -67,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF3B82F6), // primary
+                          color: Color(0xFF3B82F6),
                         ),
                       ),
                     ],
@@ -85,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          /// 🎛 FILTER CONTROLS (RIGHT TOP)
+          /// 🎛 FILTER
           Positioned(
             top: 120,
             right: 20,
@@ -114,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          /// 📊 LEGEND (BOTTOM LEFT)
+          /// 📊 LEGEND
           Positioned(
             bottom: 20,
             left: 20,
@@ -137,8 +166,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          /// 📌 INSTRUCTIONS (BOTTOM RIGHT)
-        Positioned(
+          /// 📌 HEADER WIDGET (TOP)
+          Positioned(
             top: 0,
             left: 0,
             right: 0,
